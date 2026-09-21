@@ -695,7 +695,7 @@ footer p:last-child {
   }
 
   h1 {
-    font-size: clamp(43px, 13vw, 62px);
+    font-size: clamp(33px, 13vw, 52px);
   }
 
   .hero-copy {
