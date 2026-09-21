@@ -106,6 +106,14 @@ a {
   margin-left: 9px;
 }
 
+.header-cta span,
+.button span,
+.text-link span,
+.back-to-top {
+  font-family: Arial, sans-serif;
+  font-variant-emoji: text;
+}
+
 .hero {
   position: relative;
   min-height: 760px;
@@ -695,7 +703,7 @@ footer p:last-child {
   }
 
   h1 {
-    font-size: clamp(33px, 13vw, 52px);
+    font-size: clamp(30px, 10vw, 46px);
   }
 
   .hero-copy {
