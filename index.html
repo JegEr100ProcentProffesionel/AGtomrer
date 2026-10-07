@@ -133,6 +133,7 @@
 
         <div class="project-list">
           <div class="project-carousel" aria-label="Billeder fra vores projekter">
+            <button class="carousel-arrow carousel-arrow-prev" type="button" aria-label="Forrige projektbillede">←</button>
             <div class="project-carousel-track">
               <img src="Tagterrasse%201.jpg" alt="Tagterrasse i træ">
               <img src="Tagterrasse%202.jpg" alt="Detalje fra tagterrasse">
@@ -145,6 +146,7 @@
               <img src="Køkken efter.jpg" alt="Køkken efter renovering">
               <img src="Ovenlys efter 1.jpg" alt="Ovenlys efter renovering">
             </div>
+            <button class="carousel-arrow carousel-arrow-next" type="button" aria-label="Næste projektbillede">→</button>
           </div>
 
           <div class="carousel-dots" aria-label="Vælg projektbillede"></div>
@@ -220,8 +222,15 @@
       let carouselDots = [];
       let currentIndex = 0;
       let carouselTimer;
+      let isPausedBySelection = false;
+      const previousButton = carousel.querySelector('.carousel-arrow-prev');
+      const nextButton = carousel.querySelector('.carousel-arrow-next');
 
-      const getVisibleImages = () => window.matchMedia('(max-width: 600px)').matches ? 2 : 3;
+      const getVisibleImages = () => {
+        if (window.matchMedia('(max-width: 600px)').matches) return 1;
+        if (window.matchMedia('(max-width: 900px)').matches) return 2;
+        return 3;
+      };
 
       const updateDots = () => {
         const maxIndex = carouselImages.length - getVisibleImages();
@@ -233,7 +242,6 @@
           dot.ariaLabel = `Vis projektbillede ${index + 1}`;
           dot.addEventListener('click', () => {
             updateCarousel(index);
-            startCarousel();
           });
           carouselDotsContainer.append(dot);
           return dot;
@@ -243,29 +251,72 @@
       const updateCarousel = (imageIndex) => {
         const visibleImages = getVisibleImages();
         const maxIndex = carouselImages.length - visibleImages;
-        currentIndex = (imageIndex + maxIndex + 1) % (maxIndex + 1);
-        const imageWidth = (carousel.clientWidth - ((visibleImages - 1) * 16)) / visibleImages;
-        carouselTrack.style.transform = `translateX(-${currentIndex * (imageWidth + 16)}px)`;
+        currentIndex = Math.max(0, Math.min(imageIndex, maxIndex));
+        const isDesktop = window.matchMedia('(min-width: 901px)').matches;
+        const availableWidth = carousel.clientWidth;
+        const carouselGap = isDesktop
+          ? (15 + (availableWidth / 60)) / 1.0333333333
+          : 15;
+        const imageWidth = (availableWidth - ((visibleImages - 1) * carouselGap)) / visibleImages;
+        carouselTrack.style.setProperty('--carousel-gap', `${carouselGap}px`);
+        if (isDesktop) {
+          carouselTrack.style.setProperty('--carousel-image-width', `${imageWidth}px`);
+        } else {
+          carouselTrack.style.removeProperty('--carousel-image-width');
+        }
+        carouselTrack.style.transform = `translateX(-${currentIndex * (imageWidth + carouselGap)}px)`;
+        const activeIndex = currentIndex + Math.floor(visibleImages / 2);
         carouselDots.forEach((dot, index) => {
           dot.classList.toggle('is-active', index === currentIndex);
           dot.setAttribute('aria-current', index === currentIndex ? 'true' : 'false');
+        });
+        carouselImages.forEach((image, index) => {
+          const isActive = index === activeIndex;
+          const isVisible = index >= currentIndex && index < currentIndex + visibleImages;
+          image.classList.toggle('is-active', isActive);
+          image.classList.toggle('is-visible', isVisible);
+          image.style.flexBasis = isDesktop && isActive ? `${imageWidth * 1.1}px` : `${imageWidth}px`;
+          image.style.width = isDesktop && isActive ? `${imageWidth * 1.1}px` : `${imageWidth}px`;
+          image.style.height = isDesktop && isActive ? `${carousel.clientHeight * 1.1}px` : `${carousel.clientHeight}px`;
+          image.style.minHeight = isDesktop && isActive ? `${carousel.clientHeight * 1.1}px` : '';
+          image.style.marginTop = isDesktop && isActive ? `${carousel.clientHeight * -0.05}px` : '';
         });
       };
 
       const startCarousel = () => {
         clearInterval(carouselTimer);
-        carouselTimer = setTimeout(() => {
-          updateCarousel(currentIndex + 1);
-          carouselTimer = setInterval(() => updateCarousel(currentIndex + 1), 2400);
-        }, 300);
+        isPausedBySelection = false;
+        carouselTimer = setInterval(() => {
+          updateCarousel(currentIndex >= carouselImages.length - getVisibleImages() ? 0 : currentIndex + 1);
+        }, 4000);
       };
 
       const stopCarousel = () => clearInterval(carouselTimer);
 
-      carousel.addEventListener('mouseenter', stopCarousel);
-      carousel.addEventListener('mouseleave', startCarousel);
-      carousel.addEventListener('focusin', stopCarousel);
-      carousel.addEventListener('focusout', startCarousel);
+      const moveCarousel = (direction) => {
+        const maxIndex = carouselImages.length - getVisibleImages();
+        const nextIndex = currentIndex + direction;
+        updateCarousel(nextIndex > maxIndex ? 0 : nextIndex < 0 ? maxIndex : nextIndex);
+      };
+
+      previousButton.addEventListener('click', () => moveCarousel(-1));
+      nextButton.addEventListener('click', () => moveCarousel(1));
+
+      carouselImages.forEach((image, index) => {
+        image.addEventListener('click', () => {
+          const visibleImages = getVisibleImages();
+          const activeIndex = currentIndex + Math.floor(visibleImages / 2);
+          if (isPausedBySelection && index === activeIndex) {
+            startCarousel();
+            return;
+          }
+
+          const centeredIndex = index - Math.floor(visibleImages / 2);
+          updateCarousel(Math.max(0, Math.min(centeredIndex, carouselImages.length - visibleImages)));
+          stopCarousel();
+          isPausedBySelection = true;
+        });
+      });
       window.addEventListener('resize', () => {
         updateDots();
         updateCarousel(currentIndex);
